@@ -58,7 +58,7 @@ Expect<ErrNo> parseMetadata(Graph &GraphRef, const std::string &Metadata,
 
   // Get the current llama parameters.
   llama_model_params ModelParams = llama_model_default_params();
-  ModelParams.n_gpu_layers = GraphRef.NGPULayers;
+  ModelParams.n_gpu_layers = static_cast<int32_t>(GraphRef.NGPULayers);
   ModelParams.main_gpu = GraphRef.MainGPU;
   ModelParams.tensor_split = GraphRef.TensorSplit.data();
 
@@ -345,8 +345,8 @@ Expect<ErrNo> getEmbedding(WasiNNEnvironment &Env,
   }
   // Initialize the llama context.
   llama_context_params ContextParams = llama_context_default_params();
-  ContextParams.n_ctx = GraphRef.CtxSize;
-  ContextParams.n_batch = GraphRef.BatchSize;
+  ContextParams.n_ctx = static_cast<uint32_t>(GraphRef.CtxSize);
+  ContextParams.n_batch = static_cast<uint32_t>(GraphRef.BatchSize);
   ContextParams.embedding = GraphRef.Embedding;
   auto *LlamaContext =
       llama_new_context_with_model(GraphRef.LlamaModel, ContextParams);
@@ -373,9 +373,10 @@ Expect<ErrNo> getEmbedding(WasiNNEnvironment &Env,
     const uint64_t NTokens = (ContextParams.n_batch > CxtRef.LlamaInputs.size())
                                  ? CxtRef.LlamaInputs.size()
                                  : ContextParams.n_batch;
-    auto Status = llama_decode(LlamaContext,
-                               llama_batch_get_one(CxtRef.LlamaInputs.data(),
-                                                   NTokens, NPast, SequenceId));
+    auto Status = llama_decode(
+        LlamaContext,
+        llama_batch_get_one(CxtRef.LlamaInputs.data(),
+                            static_cast<int32_t>(NTokens), NPast, SequenceId));
     if (Status == 1) {
       spdlog::error(
           "[WASI-NN] GGML backend: failed to llama_decode: try "
@@ -388,7 +389,7 @@ Expect<ErrNo> getEmbedding(WasiNNEnvironment &Env,
       return ErrNo::RuntimeError;
     }
 
-    NPast += NTokens;
+    NPast += static_cast<int>(NTokens);
     CxtRef.LlamaInputs.erase(CxtRef.LlamaInputs.begin(),
                              CxtRef.LlamaInputs.begin() + NTokens);
   }
@@ -560,7 +561,7 @@ Expect<ErrNo> load(WasiNNEnvironment &Env, Span<const Span<uint8_t>> Builders,
   // Initialize ggml model with model parameters.
   GraphRef.ModelFilePath = ModelFilePath;
   llama_model_params ModelParams = llama_model_default_params();
-  ModelParams.n_gpu_layers = GraphRef.NGPULayers;
+  ModelParams.n_gpu_layers = static_cast<int32_t>(GraphRef.NGPULayers);
   ModelParams.main_gpu = GraphRef.MainGPU;
   ModelParams.tensor_split = GraphRef.TensorSplit.data();
   GraphRef.LlamaModel =
@@ -576,7 +577,7 @@ Expect<ErrNo> load(WasiNNEnvironment &Env, Span<const Span<uint8_t>> Builders,
   }
 
   // Store the loaded graph.
-  GraphId = Env.NNGraph.size() - 1;
+  GraphId = static_cast<uint32_t>(Env.NNGraph.size()) - 1;
 
   // Disable llama log by default.
   log_disable();
@@ -587,7 +588,7 @@ Expect<ErrNo> load(WasiNNEnvironment &Env, Span<const Span<uint8_t>> Builders,
 Expect<ErrNo> initExecCtx(WasiNNEnvironment &Env, uint32_t GraphId,
                           uint32_t &ContextId) noexcept {
   Env.NNContext.emplace_back(GraphId, Env.NNGraph[GraphId]);
-  ContextId = Env.NNContext.size() - 1;
+  ContextId = static_cast<uint32_t>(Env.NNContext.size()) - 1;
   auto &GraphRef = Env.NNGraph[GraphId].get<Graph>();
   if (GraphRef.EnableLog) {
     spdlog::info("[WASI-NN] GGML backend: llama_system_info: {}"sv,
@@ -630,7 +631,7 @@ Expect<ErrNo> setInput(WasiNNEnvironment &Env, uint32_t ContextId,
     {
       if (IsModelParamsUpdated) {
         llama_model_params ModelParams = llama_model_default_params();
-        ModelParams.n_gpu_layers = GraphRef.NGPULayers;
+        ModelParams.n_gpu_layers = static_cast<int32_t>(GraphRef.NGPULayers);
         llama_free_model(GraphRef.LlamaModel);
         GraphRef.LlamaModel = llama_load_model_from_file(
             GraphRef.ModelFilePath.c_str(), ModelParams);
@@ -656,6 +657,12 @@ Expect<ErrNo> setInput(WasiNNEnvironment &Env, uint32_t ContextId,
     spdlog::info("[WASI-NN][Debug] GGML backend: init llama context"sv);
   }
   llama_context_params ContextParams = llama_context_default_params();
+  //   ContextParams.n_ctx = static_cast<uint32_t>(GraphRef.CtxSize);
+  // ContextParams.n_batch = static_cast<uint32_t>(GraphRef.BatchSize);
+  // ContextParams.n_threads = static_cast<uint32_t>(GraphRef.Threads);
+  // ContextParams.n_threads_batch = static_cast<uint32_t>(GraphRef.Threads);
+  // ContextParams.embedding = GraphRef.Embedding;
+
   details::setupContextParam(GraphRef, ContextParams);
   auto LlamaContext =
       llama_new_context_with_model(GraphRef.LlamaModel, ContextParams);
@@ -763,13 +770,13 @@ Expect<ErrNo> getOutput(WasiNNEnvironment &Env, uint32_t ContextId,
       return Res;
     }
     std::copy_n(Metadata.data(), Metadata.length(), OutBuffer.data());
-    BytesWritten = Metadata.length();
+    BytesWritten = static_cast<uint32_t>(Metadata.length());
     return ErrNo::Success;
   }
 
   std::copy_n(CxtRef.LlamaOutputs.data(), CxtRef.LlamaOutputs.length(),
               OutBuffer.data());
-  BytesWritten = CxtRef.LlamaOutputs.length();
+  BytesWritten = static_cast<uint32_t>(CxtRef.LlamaOutputs.length());
   return ErrNo::Success;
 }
 
@@ -803,6 +810,14 @@ Expect<ErrNo> compute(WasiNNEnvironment &Env, uint32_t ContextId) noexcept {
 
   // Initialize the llama context.
   gpt_params GPTParams;
+  //   GPTParams.sparams.temp = static_cast<float>(GraphRef.Temp);
+  // GPTParams.sparams.top_p = static_cast<float>(GraphRef.TopP);
+  // GPTParams.sparams.penalty_repeat =
+  // static_cast<float>(GraphRef.RepeatPenalty);
+  // GPTParams.sparams.penalty_present =
+  //     static_cast<float>(GraphRef.PresencePenalty);
+  // GPTParams.sparams.penalty_freq =
+  //     static_cast<float>(GraphRef.FrequencyPenalty);
   llama_context_params ContextParams = llama_context_default_params();
   details::setupGPTParam(GraphRef, GPTParams);
   details::setupContextParam(GraphRef, ContextParams);
@@ -812,7 +827,7 @@ Expect<ErrNo> compute(WasiNNEnvironment &Env, uint32_t ContextId) noexcept {
       llama_sampling_init(GPTParams.sparams);
   // Prepare variables;
   int32_t NPast = 0;
-  int32_t NRemain = GraphRef.NPredict;
+  int32_t NRemain = static_cast<uint32_t>(GraphRef.NPredict);
   // Get the context size.
   const uint64_t NCtx = llama_n_ctx(LlamaContext);
   // Minus 4 for the special tokens. (Such as <BOS>, <EOS>, ... tokens.)
@@ -950,13 +965,13 @@ Expect<ErrNo> getOutputSingle(WasiNNEnvironment &Env, uint32_t ContextId,
       return Res;
     }
     std::copy_n(Metadata.data(), Metadata.length(), OutBuffer.data());
-    BytesWritten = Metadata.length();
+    BytesWritten = static_cast<uint32_t>(Metadata.length());
     return ErrNo::Success;
   }
   std::string LastToken = llama_token_to_piece(CxtRef.LlamaContext,
                                                CxtRef.LlamaOutputTokens.back());
   std::copy_n(LastToken.data(), LastToken.length(), OutBuffer.data());
-  BytesWritten = LastToken.length();
+  BytesWritten = static_cast<uint32_t>(LastToken.length());
   return ErrNo::Success;
 }
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2019-2022 Second State INC
 
-find_package(spdlog QUIET)
+find_package(spdlog CONFIG REQUIRED)
 if(spdlog_FOUND)
 else()
   FetchContent_Declare(

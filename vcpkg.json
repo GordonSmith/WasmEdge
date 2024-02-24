@@ -1,0 +1,15 @@
+{
+  "dependencies": [
+    "boost-algorithm",
+    "boost-align",
+    "boost-predef",
+    "fmt",
+    "llvm",
+    "openvino",
+    "pkgconf",
+    "simdjson",
+    "spdlog",
+    "zlib",
+    "zstd"
+  ]
+}

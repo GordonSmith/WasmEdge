@@ -40,7 +40,7 @@ elseif(UNIX)
     message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
   endif()
 else()
-  message(FATAL_ERROR "Unsupported system: ${CMAKE_SYSTEM_NAME}")
+  # message(FATAL_ERROR "Unsupported system: ${CMAKE_SYSTEM_NAME}")
 endif()
 
 function(wasmedge_setup_tf_headers)

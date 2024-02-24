@@ -50,16 +50,20 @@ if(BACKEND STREQUAL "ggml")
     llama
     GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
     GIT_TAG        b2230
-    PATCH_COMMAND  test -f ggml.patched || git apply ${CMAKE_SOURCE_DIR}/thirdparty/ggml/ggml.patch && ${CMAKE_COMMAND} -E touch ggml.patched
+    PATCH_COMMAND  git reset --hard && git apply ${CMAKE_SOURCE_DIR}/thirdparty/ggml/ggml.patch && ${CMAKE_COMMAND} -E touch ggml.patched
     GIT_SHALLOW    FALSE
   )
   FetchContent_MakeAvailable(llama)
   set_property(TARGET ggml PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_property(TARGET common PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_property(TARGET llama PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_property(TARGET llama PROPERTY COMPILE_OPTIONS
+      /W3 
+      /WX-
+    )
 
   # setup simdjson
-  find_package(simdjson QUIET)
+  find_package(simdjson CONFIG REQUIRED)
   if(simdjson_FOUND)
     message(STATUS "SIMDJSON found")
   else()
@@ -129,6 +133,13 @@ wasmedge_add_library(wasmedgePluginWasiNN
   ggml.cpp
 )
 
+if(MSVC)
+  # target_compile_options(wasmedgePluginWasiNN PRIVATE /W3 /WX-)
+  # list(APPEND WASMEDGE_CFLAGS
+  #   /wd4245
+  # )
+endif()
+
 target_compile_options(wasmedgePluginWasiNN
   PUBLIC
   -DWASMEDGE_PLUGIN
@@ -156,11 +167,14 @@ if(BACKEND STREQUAL "ggml")
     ${CMAKE_BINARY_DIR}/_deps/llama-src/examples/llava
   )
   target_compile_options(llava PRIVATE
-    -Wno-error=unused-function
-    -Wno-error=unused-variable
-    -Wno-unused-function
-    -Wno-unused-variable
+    # -Wno-error=unused-function
+    # -Wno-error=unused-variable
+    # -Wno-unused-function
+    # -Wno-unused-variable
   )
+  if (MSVC)
+    target_compile_options(llava PRIVATE /W3 /WX-)
+  endif()
   wasmedge_setup_target(llava)
 
   # Setup include and link from llama.cpp
@@ -198,6 +212,10 @@ if(WASMEDGE_BUILD_WASI_NN_RPC)
     PRIVATE
     wasiNNRPC
   )
+endif()
+
+if (MSVC)
+  target_compile_options(wasmedgePluginWasiNN PRIVATE /W3 /WX-)
 endif()
 
 include(WASINNDeps)

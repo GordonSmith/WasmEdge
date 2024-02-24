@@ -93,16 +93,16 @@ WasiNNEnvironment::WasiNNEnvironment() noexcept {
     auto Backend = BackendMap.find(Encode);
     auto Device = DeviceMap.find(Target);
     if (Backend != BackendMap.end() && Device != DeviceMap.end()) {
-      for (const std::string &Path : Paths) {
+      for (const std::string &Path2 : Paths) {
         if (Backend->second == Backend::GGML) {
           // We write model path to model data to avoid file IO in llama.cpp.
-          std::string ModelPath = "preload:" + Path;
+          std::string ModelPath = "preload:" + Path2;
           std::vector<uint8_t> ModelPathData(ModelPath.begin(),
                                              ModelPath.end());
           Models.push_back(std::move(ModelPathData));
         } else {
           std::vector<uint8_t> Model;
-          if (load(std::filesystem::u8path(Path), Model)) {
+          if (load(std::filesystem::u8path(Path2), Model)) {
             Models.push_back(std::move(Model));
           }
         }
@@ -140,21 +140,13 @@ void addOptions(const Plugin::Plugin::PluginDescriptor *,
 #endif
 }
 
+Plugin::PluginModule::ModuleDescriptor ModuleDescriptions[] = {
+    {"wasi_nn", "", create}};
+
 Plugin::Plugin::PluginDescriptor Descriptor{
-    .Name = "wasi_nn",
-    .Description = "",
-    .APIVersion = Plugin::Plugin::CurrentAPIVersion,
-    .Version = {0, 10, 1, 0},
-    .ModuleCount = 1,
-    .ModuleDescriptions =
-        (Plugin::PluginModule::ModuleDescriptor[]){
-            {
-                .Name = "wasi_nn",
-                .Description = "",
-                .Create = create,
-            },
-        },
-    .AddOptions = addOptions,
+    "wasi_nn",     "", Plugin::Plugin::CurrentAPIVersion,
+    {0, 10, 1, 0}, 1,  ModuleDescriptions,
+    addOptions,
 };
 
 EXPORT_GET_DESCRIPTOR(Descriptor)

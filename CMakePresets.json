@@ -1,0 +1,49 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "vcpkg",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_INSTALL_OPTIONS": "--downloads-root=${sourceDir}/build/vcpkg_downloads;--x-buildtrees-root=${sourceDir}/build/vcpkg_buildtrees;--x-packages-root=${sourceDir}/build/vcpkg_packages"
+            }
+        },
+        {
+            "name": "vcpkg-win",
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_INSTALL_OPTIONS": "--downloads-root=${sourceDir}/build/vcpkg_downloads;--x-buildtrees-root=${sourceDir}/build/vcpkg_buildtrees;--x-packages-root=${sourceDir}/build/vcpkg_packages",
+                "WASMEDGE_PLUGIN_WASI_NN_BACKEND": "ggml",
+                "WASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA_CUBLAS": "ON",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "vcpkg-debug",
+            "configurePreset": "vcpkg",
+            "configuration": "Debug"
+        },
+        {
+            "name": "vcpkg-win-debug",
+            "configurePreset": "vcpkg-win",
+            "configuration": "Debug",
+            "nativeToolOptions": [
+                "-m"
+            ]
+        },
+        {
+            "name": "vcpkg-win-release",
+            "configurePreset": "vcpkg-win",
+            "configuration": "Release",
+            "nativeToolOptions": [
+                "-m"
+            ]
+        }
+    ]
+}
